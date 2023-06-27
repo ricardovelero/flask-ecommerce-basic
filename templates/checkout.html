@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Checkout</title>
+    <style>
+        /* Add your CSS styles here */
+    </style>
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+    <h1>Checkout</h1>
+
+    <form id="checkout-form" action="/checkout" method="POST">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+
+        <label for="address">Address:</label>
+        <input type="text" id="address" name="address" required>
+
+        <label for="city">City:</label>
+        <input type="text" id="city" name="city" required>
+
+        <label for="postal_code">Postal Code:</label>
+        <input type="text" id="postal_code" name="postal_code" required>
+
+        <!-- Add other required fields -->
+
+        <button id="checkout-button">Checkout</button>
+    </form>
+
+    <script>
+        var stripe = Stripe('your_stripe_publishable_key');
+        var checkoutButton = document.getElementById('checkout-button');
+
+        checkoutButton.addEventListener('click', function(event) {
+            event.preventDefault();
+
+            // Disable the checkout button to prevent multiple clicks
+            checkoutButton.disabled = true;
+
+            // Create a new Stripe Checkout session when the button is clicked
+            fetch('/checkout', {
+                method: 'POST',
+            })
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(session) {
+                return stripe.redirectToCheckout({ sessionId: session.id });
+            })
+            .then(function(result) {
+                if (result.error) {
+                    // Display an error message if there's an issue with the Stripe checkout
+                    alert(result.error.message);
+                    // Re-enable the checkout button
+                    checkoutButton.disabled = false;
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                // Re-enable the checkout button
+                checkoutButton.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>
