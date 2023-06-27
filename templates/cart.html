@@ -8,7 +8,9 @@
 </head>
 <body>
     <h1>Cart</h1>
-    
+    {% if message %}
+        <h3>{{message}}</h3>
+    {% endif %}
     <table>
         <thead>
             <tr>
@@ -22,9 +24,21 @@
             {% for item in cart_items %}
                 <tr>
                     <td>{{ item.product.name }}</td>
-                    <td>{{ item.quantity }}</td>
+                    <td>
+                        <form action="/update_quantity" method="POST">
+                            <input type="hidden" name="product_id" value="{{ item.product.id }}">
+                            <input type="number" name="quantity" value="{{ item.quantity }}" min="1" required>
+                            <button type="submit">Update</button>
+                        </form>
+                    </td>
                     <td>${{ item.product.price }}</td>
                     <td>${{ item.item_total }}</td>
+                    <td>
+                        <form action="/remove_item" method="POST">
+                            <input type="hidden" name="product_id" value="{{ item.product.id }}">
+                            <button type="submit">X</button>
+                        </form>
+                    </td>
                 </tr>
             {% endfor %}
         </tbody>

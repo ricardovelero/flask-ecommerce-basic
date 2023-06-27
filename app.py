@@ -38,33 +38,45 @@ def load_user(user_id):
 
 
 # GraphQL API endpoint
-GRAPHQL_API_URL = 'https://example.com/graphql'
+GRAPHQL_API_URL = 'https://graphql.datocms.com/'
 
 
 def fetch_products():
     # GraphQL query to fetch products
     query = """
-        query {
-            products {
-                id
-                name
-                price
-            }
+      query MyQuery {
+        allProductos {
+          id
+          name
+          price
         }
+      }
     """
 
+    headers = {
+        'Authorization': 'Bearer ' + dato_cms_key
+    }
+
     # Send a POST request to the GraphQL API with the query
-    response = requests.post(GRAPHQL_API_URL, json={'query': query})
+    response = requests.post(GRAPHQL_API_URL, json={
+                             'query': query}, headers=headers)
     data = response.json()
 
     # Extract the products from the response data
-    products = data['data']['products']
+    products = data['data']['allProductos']
 
     return products
 
 
 # Set up Stripe API keys
 stripe.api_key = 'your_stripe_secret_key'
+
+
+def find_item_by_id(item_list, target_id):
+    for item in item_list:
+        if item['id'] == target_id:
+            return item
+    return None
 
 
 @app.route('/')
@@ -154,34 +166,70 @@ def add_to_cart():
         cart[product_id] = quantity
 
     session['cart'] = cart
+    session['message'] = 'Product added to cart successfully'
 
-    return 'Product added to cart'
+    return redirect(url_for('cart'))
 
 
 @app.route('/cart')
 def cart():
     cart = session.get('cart', {})  # Get the cart from the session
+    # Get the message from the session
+    message = session.pop('message', None)
 
     # Fetch product information based on the product IDs in the cart
-    products = {
-        'product1': {'name': 'Product 1', 'price': 10},
-        'product2': {'name': 'Product 2', 'price': 20},
-        'product3': {'name': 'Product 3', 'price': 15},
-    }
+    products = fetch_products()  # Fetch products from the GraphQL API
 
     cart_items = []
     total_price = 0
 
     # Calculate the total price and construct the cart item list
     for product_id, quantity in cart.items():
-        product = products.get(product_id)
+        product = find_item_by_id(products, product_id)
         if product:
             item_total = quantity * product['price']
             total_price += item_total
             cart_items.append(
                 {'product': product, 'quantity': quantity, 'item_total': item_total})
 
-    return render_template('cart.html', cart_items=cart_items, total_price=total_price)
+    return render_template('cart.html', cart_items=cart_items, total_price=total_price, message=message)
+
+
+@app.route('/update_quantity', methods=['POST'])
+def update_quantity():
+    cart = session.get('cart', {})  # Get the cart from the session
+    product_id = request.form['product_id']
+    quantity = int(request.form['quantity'])
+
+    # Update the quantity of the specified product in the cart
+    for item in cart.items():
+        if item[0] == product_id:
+            cart[product_id] = quantity
+            session['cart'] = cart
+            break
+
+    # Store a message in the session to display on the cart page
+    session['message'] = 'Quantity updated successfully'
+
+    return redirect(url_for('cart'))
+
+
+@app.route('/remove_item', methods=['POST'])
+def remove_item():
+    cart = session.get('cart', {})  # Get the cart from the session
+    product_id = request.form['product_id']
+
+    # Update the quantity of the specified product in the cart
+    for item in cart.items():
+        if item[0] == product_id:
+            del cart[product_id]
+            session['cart'] = cart
+            break
+
+    # Store a message in the session to display on the cart page
+    session['message'] = 'Item removed successfully'
+
+    return redirect(url_for('cart'))
 
 
 @app.route('/checkout', methods=['GET', 'POST'])
